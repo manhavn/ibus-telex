@@ -1,0 +1,96 @@
+# --- invalid onsets / spell check + auto restore ---
+z a s
+f a s
+w a s
+j a s
+t i e n s
+z a
+# --- tone key position / free marking ---
+a s o
+a s o n
+t a o s n
+t a s o n
+t a o n s
+h o a s n
+q u a s
+q u e s
+g i a n s
+# --- modifier retype / cancel ---
+a a a s
+d d d
+d d s
+a w w
+a s s s
+o o o
+u w w
+# --- ESC / focus with diacritics present ---
+a s ESC
+t i e e n g s ESC
+a s @focusout
+a s @reset
+a s @disable
+d d @focusout
+t i e e n g s @focusout
+# --- backspace after diacritics ---
+t i e e n g s BACK
+t i e e n g s BACK BACK
+t i e e n g s BACK BACK BACK
+a s BACK
+a w BACK
+d d BACK
+# --- uppercase / mixed case ---
+A W
+T I E E N G S
+D D I
+O W S
+U O W N G
+t I e E n g S
+H O A F
+Q U Y S
+# --- modifiers (control/alt must pass through) ---
+C a
+C s
+C d
+A a
+C space
+C BACK
+# --- digits mixed in ---
+a 1 s
+a s 1
+t o i 1
+# --- more real words ---
+t i e e n g v i e e t
+n g u o w i
+d u o w n g
+h u o w n g
+n g h i e e n
+c h u y e e n
+t h u y e e n
+x u o w n g
+c u o w n g
+t o w i
+l o w n
+b a n g
+t r a n g
+n g u y e e n
+l u o w n g
+# --- long non-vietnamese ---
+a b c d e f g h
+q w e r t y
+z z z z
+# --- standalone w variants ---
+w f
+w r
+w x
+w j
+w z
+[ f
+] s
+# --- punctuation boundaries ---
+t i e e n g s .
+t i e e n g s ,
+t i e e n g s ;
+t i e e n g s RET
+t i e e n g s TAB
+t i e e n g s LEFT
+t i e e n g s HOME

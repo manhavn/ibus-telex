@@ -1,0 +1,102 @@
+# --- basic words ---
+t i e n g s
+t i e e n g s
+t i e n g space
+t i e n g s space
+t i e n g s v i e e t j
+h e l l o
+h e l l o space
+# --- d / dd ---
+d d
+d d space
+D D
+d d i
+# --- circumflex / breve / horn (telex w) ---
+a a
+a a s
+a w
+a w s
+o w
+o w s
+u w
+u w s
+u o w
+u o w n g
+n u o w c s
+t r u o w n g f
+d u o w n g
+w
+w space
+W
+[ ]
+[ space
+] space
+u o w i
+# --- tone marks ---
+a s
+a f
+a r
+a x
+a j
+a z
+a s z
+a s s
+A S
+a S
+t a s
+t a n g s
+t o a n f
+h o a s
+h o a f
+t h u y s
+h u y r
+q u y s
+g i a s
+g i o w f
+m i a s
+x o o n g
+b o o n g
+t o o i
+t o i s
+n g h i e e n g
+k h u y e e n
+t h u y e e n f
+q u y e e n
+p h u o w n g
+n g h e e
+v i e e t j
+V I E E T J
+H O A S
+t i e z
+t i e s z
+# --- boundaries, cancellation, editing ---
+t i e space
+t i e ,
+t i e .
+t i e 1
+t i e 2
+1 2 3
+a 1
+t i e BACK
+t i e BACK BACK
+t i e BACK BACK BACK
+t i e ESC
+t i e @focusout
+t i e @reset
+t i e @disable
+t i e t i e n g s BACK
+t i e n g s DEL
+BACK
+# --- non-vietnamese / restore ---
+c a s
+c s a s
+t u w s
+b a n a n a
+f o o b a r
+u n i k e y
+a s d f
+g h j k l
+z
+z a
+a a a
+t h e s e

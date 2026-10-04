@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Component file for a system wide install.  `ibus-telex install` writes the
+    same file with the real paths into ~/.local/share/ibus/component/telex.xml.
+-->
+<component>
+  <name>org.freedesktop.IBus.Telex</name>
+  <description>Vietnamese input method (Telex, VNI)</description>
+  <exec>/usr/local/bin/ibus-telex --ibus</exec>
+  <version>1.0.0</version>
+  <author>ibus-telex</author>
+  <license>GPL-3.0-or-later</license>
+  <textdomain>ibus-telex</textdomain>
+  <engines exec="/usr/local/bin/ibus-telex --xml" />
+</component>

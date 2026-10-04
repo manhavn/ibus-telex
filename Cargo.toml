@@ -1,0 +1,32 @@
+[package]
+name = "ibus-telex"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Vietnamese input method engine for IBus (Telex/VNI), pure Rust"
+license = "GPL-3.0-or-later"
+repository = "https://example.invalid/ibus-telex"
+default-run = "ibus-telex"
+
+[lib]
+name = "ibus_telex"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ibus-telex"
+path = "src/main.rs"
+
+[dependencies]
+zbus = { version = "5", default-features = false, features = ["async-io"] }
+parking_lot = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dev-dependencies]
+futures-lite = "2"
+async-io = "2"
