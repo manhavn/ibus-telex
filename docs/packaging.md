@@ -1,7 +1,9 @@
 # Packages
 
 ```sh
-./package.sh                # .deb and .rpm into dist/
+./package.sh                # .deb and .rpm for this machine's architecture
+./package.sh --all-arch     # amd64 and arm64 both
+./package.sh --arch amd64,arm64
 ./package.sh --deb          # only the .deb
 ./package.sh --rpm          # only the .rpm
 ```
@@ -10,16 +12,36 @@ Artifacts land in `dist/` next to a `SHA256SUMS` file:
 
 ```
 dist/ibus-telex_1.0.0_amd64.deb
+dist/ibus-telex_1.0.0_arm64.deb
 dist/ibus-telex-1.0.0-1.x86_64.rpm
+dist/ibus-telex-1.0.0-1.aarch64.rpm
 dist/SHA256SUMS
 ```
 
 Anyone can then install with
 
 ```sh
-sudo apt install ./ibus-telex_1.0.0_amd64.deb
-sudo dnf install ./ibus-telex-1.0.0-1.x86_64.rpm
+sudo apt install ./ibus-telex_1.0.0_amd64.deb      # or _arm64.deb
+sudo dnf install ./ibus-telex-1.0.0-1.x86_64.rpm   # or .aarch64.rpm
 ```
+
+## Both architectures
+
+The binaries that go into a package come from the **musl** targets, so they
+are statically linked:
+
+* they run on any Linux of that architecture, whatever libc it has - the
+  packages need `ibus` and nothing else, no `libc6 (>= …)`;
+* the arm64 package can be built on an amd64 machine, because no cross C
+  toolchain is involved: `rustup target add aarch64-unknown-linux-musl` and
+  the LLD that ships with Rust do the linking (`.cargo/config.toml`).
+
+```sh
+./build.sh --all-arch       # both binaries, target/{x86_64,aarch64}-unknown-linux-musl
+```
+
+`./build.sh` on its own still builds the host architecture the normal way
+(dynamically linked, for development and `./install.sh`).
 
 ## What is in them
 
@@ -42,25 +64,13 @@ Sources`, or `ibus-telex sources --append` plus `gsettings`).
 
 ## What the packages depend on
 
-`Depends: libc6 (>= …), libgcc-s1, ibus (>= 1.5.0)`.  The libc version is
-not guessed: `package.sh` reads the highest `GLIBC_x.y` symbol version out
-of the binary with `objdump` and puts that in.  Nothing else is needed -
-the engine speaks the IBus D-Bus protocol itself and does not link libibus,
-GLib or GTK.
+`Depends: ibus (>= 1.5.0)` - and nothing else, since the binaries are
+static.  The engine speaks the IBus D-Bus protocol itself; it does not link
+libibus, GLib or GTK.
 
-That also means the packages only run on a libc at least as new as the one
-they were built against (glibc 2.39 from Ubuntu 26.10 as of writing, so
-Ubuntu 24.04 and newer, Debian 13 and newer).  Building for something older
-means compiling in a container of that distribution:
-
-```sh
-podman run --rm -v "$PWD:/src" -w /src ubuntu:22.04 bash -c '
-    apt-get update && apt-get install -y curl build-essential pkg-config
-    curl -sSf https://sh.rustup.rs | sh -s -- -y
-    . "$HOME/.cargo/env"
-    ./package.sh --deb
-'
-```
+If you ever build a package from a *dynamically* linked binary instead,
+`package.sh` reads the highest `GLIBC_x.y` symbol version out of it with
+`objdump` and puts that in the dependency rather than guessing.
 
 ## Building the .rpm without rpm (what `package.sh` does)
 

@@ -30,7 +30,7 @@ That is the whole setup: no root, nothing to edit by hand.  Then switch with
 | script              | what it does                                                |
 |---------------------|-------------------------------------------------------------|
 | `install.sh`        | build + install + register + restart; `--no-source` leaves `org.gnome.desktop.input-sources` alone, `--skip-build` installs what is already built |
-| `build.sh`          | `cargo build --release` (`--debug` for a debug build)        |
+| `build.sh`          | `cargo build --release` (`--debug`; `--amd64`/`--arm64`/`--all-arch` for the static release builds) |
 | `test.sh`           | `cargo fmt --check`, `cargo clippy`, `cargo test` (`--quick` skips the first two) |
 | `uninstall.sh`      | undo all of it (`--keep-source` keeps the input source)      |
 | `package.sh`        | build `.deb`/`.rpm` for a release (see below)                |
@@ -43,15 +43,19 @@ one does not end up containing the engine.
 ## Packages
 
 ```sh
-./package.sh          # .deb and .rpm into dist/, plus SHA256SUMS
+./package.sh --all-arch      # .deb and .rpm for amd64 and arm64, plus SHA256SUMS
 ```
 
 which gives
 
 ```sh
-sudo apt install ./ibus-telex_1.0.0_amd64.deb
-sudo dnf install ./ibus-telex-1.0.0-1.x86_64.rpm
+sudo apt install ./ibus-telex_1.0.0_amd64.deb       # or _arm64.deb
+sudo dnf install ./ibus-telex-1.0.0-1.x86_64.rpm    # or .aarch64.rpm
 ```
+
+The packaged binaries are built from the musl targets, so they are static and
+run whatever libc the target machine has; the arm64 one cross-compiles on an
+amd64 machine with no extra toolchain.
 
 A package installs `/usr/bin/ibus-telex` and
 `/usr/share/ibus/component/telex.xml` - the directory IBus reads by default,
