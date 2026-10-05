@@ -33,11 +33,32 @@ That is the whole setup: no root, nothing to edit by hand.  Then switch with
 | `build.sh`          | `cargo build --release` (`--debug` for a debug build)        |
 | `test.sh`           | `cargo fmt --check`, `cargo clippy`, `cargo test` (`--quick` skips the first two) |
 | `uninstall.sh`      | undo all of it (`--keep-source` keeps the input source)      |
+| `package.sh`        | build `.deb`/`.rpm` for a release (see below)                |
 
 `install.sh` refuses to run as root (it installs into `~/.local`), saves the
 previous `org.gnome.desktop.input-sources sources` value under
 `~/.cache/ibus-telex/input-sources.bak` and puts that value back if the new
 one does not end up containing the engine.
+
+## Packages
+
+```sh
+./package.sh          # .deb and .rpm into dist/, plus SHA256SUMS
+```
+
+which gives
+
+```sh
+sudo apt install ./ibus-telex_1.0.0_amd64.deb
+sudo dnf install ./ibus-telex-1.0.0-1.x86_64.rpm
+```
+
+A package installs `/usr/bin/ibus-telex` and
+`/usr/share/ibus/component/telex.xml` - the directory IBus reads by default,
+so no per-user component path is involved.  The input source is per user and
+the package prints how to add it.  Details, including the libc requirement
+and the container fallback used for the `.rpm`, are in
+[`docs/packaging.md`](docs/packaging.md).
 
 ## Install by hand
 

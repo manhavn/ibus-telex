@@ -5,7 +5,6 @@ edition = "2021"
 rust-version = "1.75"
 description = "Vietnamese input method engine for IBus (Telex/VNI), pure Rust"
 license = "GPL-3.0-or-later"
-repository = "https://example.invalid/ibus-telex"
 default-run = "ibus-telex"
 
 [lib]
