@@ -89,6 +89,8 @@ Measured with the harness; "Unikey" is what ibus-unikey 0.7.0 does.
 | `w z`, `[ z` | `ưz`, `ơz` | `wz`, `[z` | same |
 | `a a z`, `o o z`, `a w z`, `o w z`, `u w z` | `âz`, `ôz`, `ăz`, `ơz`, `ưz` | `aaz`, `ooz`, `awz`, `owz`, `uwz` | same |
 | `a a [`, `a a ]`, `o o ]` | `â[`, `â]`, `ô]` | `aa[`, `aa]`, `oo]` | same |
+| type a word, then `@reset` (a mouse click in the same text field) | word dropped | word committed | a typed word is never thrown away, see [wayland.md](wayland.md) §4 |
+| `c h a f o` then the keypad `5` | commits `chào` and lets the application insert the `5` | keeps the digit in the word and commits `chafo5` | the keypad behaves like the number row (see §7 of wayland.md); a word with a digit in it is not Vietnamese, and such a word is committed as typed |
 
 Those last four groups are one rule, and it is the rule this engine wants:
 **a misspelled word is committed exactly as it was typed.**  Unikey is not

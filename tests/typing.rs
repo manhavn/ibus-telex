@@ -258,8 +258,9 @@ fn focus_loss_commits_a_pending_word() {
     assert_eq!(typing.flush(), None);
 }
 
+/// `discard` is the opposite of `flush`; the engine itself commits on Reset.
 #[test]
-fn reset_drops_a_pending_word() {
+fn discard_drops_a_pending_word() {
     let mut typing = Typing::new(Options::default());
     for c in "dd".chars() {
         typing.key_char(c);

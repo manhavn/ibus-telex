@@ -29,6 +29,13 @@ KEYCODE = {
     '6': 15, '7': 16, '8': 17, '9': 18, '0': 19, '[': 34, ']': 35, '\\': 51,
     ';': 47, "'": 48, ',': 59, '.': 60, '/': 61, '-': 20, '=': 21, '`': 49,
 }
+# keysyms that are not their ASCII equivalent, e.g. the numpad digits
+NAMED = {'KP0': 0xffb0, 'KP1': 0xffb1, 'KP2': 0xffb2, 'KP3': 0xffb3, 'KP4': 0xffb4,
+         'KP5': 0xffb5, 'KP6': 0xffb6, 'KP7': 0xffb7, 'KP8': 0xffb8, 'KP9': 0xffb9,
+         'KPDOT': 0xffae, 'KPADD': 0xffab, 'KPSUB': 0xffad, 'KPMUL': 0xffaa,
+         'KPDIV': 0xffaf, 'KPEQ': 0xffbd, 'KPENTER': 0xff8d, 'KPHOME': 0xff95,
+         'KPLEFT': 0xff96, 'KPRIGHT': 0xff98, 'KPUP': 0xff97, 'KPDOWN': 0xff99}
+
 SPECIAL = {'ESC': (0xff1b, 9), 'BACK': (0xff08, 22), 'RET': (0xff0d, 36),
            'DEL': (0xffff, 119), 'TAB': (0xff09, 23), 'HOME': (0xff50, 110),
            'LEFT': (0xff51, 113), 'RIGHT': (0xff53, 114), 'UP': (0xff52, 111),
@@ -105,6 +112,8 @@ def send(path, tok):
     base = tok
     if base.upper() in SPECIAL:
         kv, kc = SPECIAL[base.upper()]
+    elif base.upper() in NAMED:
+        kv, kc = NAMED[base.upper()], 0
     elif len(base) == 2 and base[0] in 'SCAN' and base[1] in KEYCODE:
         mods |= {'S': 1, 'C': 4, 'A': 8, 'N': 16}[base[0]]
         kv = ord(base[1])

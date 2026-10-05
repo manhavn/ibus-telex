@@ -33,6 +33,42 @@ fn state_bits_that_must_not_block_typing() {
 }
 
 #[test]
+fn keypad_keys_are_not_their_ascii_equivalents() {
+    // With Num Lock on the keypad sends its own keysyms: `KP_5` is 0xffb5,
+    // not `5`.  An engine that does not translate them never sees a keypad
+    // digit, the application inserts it - in front of the pre-edit.
+    assert_eq!(keys::char_from_keyval(0xffb5), Some('5'));
+    assert_eq!(keys::char_from_keyval(0xffb0), Some('0'));
+    assert_eq!(keys::char_from_keyval(0xffb9), Some('9'));
+    assert_eq!(keys::char_from_keyval(0xffad), Some('-'));
+    assert_eq!(keys::char_from_keyval(0xffab), Some('+'));
+    assert_eq!(keys::char_from_keyval(0xffae), Some('.'));
+    assert_eq!(keys::char_from_keyval(0xffaf), Some('/'));
+    assert_eq!(keys::char_from_keyval(0xffbd), Some('='));
+    // the number row is unchanged
+    assert_eq!(keys::char_from_keyval('5' as u32), Some('5'));
+}
+
+#[test]
+fn keypad_without_num_lock_is_navigation() {
+    for kv in [
+        keys::KEY_KP_HOME,
+        keys::KEY_KP_LEFT,
+        keys::KEY_KP_UP,
+        keys::KEY_KP_RIGHT,
+        keys::KEY_KP_DOWN,
+        keys::KEY_KP_PAGE_UP,
+        keys::KEY_KP_PAGE_DOWN,
+        keys::KEY_KP_END,
+        keys::KEY_KP_INSERT,
+        keys::KEY_KP_DELETE,
+    ] {
+        assert!(keys::is_navigation(kv), "{kv:#x} must be navigation");
+    }
+    assert!(!keys::is_navigation(0xffb5), "KP_5 is a digit");
+}
+
+#[test]
 fn application_shortcuts_still_pass_through() {
     let shortcuts = [
         keys::CONTROL_MASK,

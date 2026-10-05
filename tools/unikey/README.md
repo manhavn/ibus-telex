@@ -26,6 +26,7 @@ Battery syntax (space separated):
 a b c          one character per token, `A` means the key value for A
 Sx             shift + x
 BACK RETURN ESC DEL TAB LEFT RIGHT HOME END PGUP PGDN SPACE
+KP0..KP9 KPDOT KPADD KPSUB KPMUL KPDIV KPEQ KPENTER KPHOME KPLEFT KPRIGHT
 @focusout @focusin @reset @disable @enable
 # comments
 ```
@@ -36,7 +37,8 @@ commit chunks, the final pre-edit and every signal.
 ## `gen_probe.py` - probe syllable validity
 
 Writes `data/probe_battery.txt` and `data/probe_manifest.json`: every
-candidate onset and every nucleus+coda combination followed by a tone key.
+candidate onset (against every vowel, since `k` is only allowed before
+i/y/e/ê) and every nucleus+coda combination, each followed by a tone key.
 Feed the battery to an engine with `drive.py`, and a rhyme is valid when the
 engine applies the diacritic instead of restoring the keystrokes.
 

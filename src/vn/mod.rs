@@ -677,10 +677,11 @@ impl Word {
             }
         }
 
-        if !p.broken {
-            try_move_glide(&mut p);
-            p.tone_at = tone_position(&p, opts);
-        }
+        // The tone is placed even when the word has already broken, so the
+        // pre-edit keeps showing what has been typed (`chào5`, like Unikey);
+        // it is the commit that refuses to hand it over like that.
+        try_move_glide(&mut p);
+        p.tone_at = tone_position(&p, opts);
         p.last_mod = last_mod;
         p
     }

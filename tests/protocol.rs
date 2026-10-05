@@ -314,6 +314,60 @@ fn engine_serves_the_ibus_protocol() {
         assert!(!handled, "password fields must not get Vietnamese input");
         let _: () = engine.call("SetContentType", &(0u32, 0u32)).await.unwrap();
 
+        // A keypad digit carries its own keysym (KP_5, with Num Lock on).
+        // Declining it makes the application insert the digit itself, which
+        // lands in front of the pre-edit.
+        const KP_5: u32 = 0xffb5;
+        const NUM_LOCK: u32 = 1 << 4;
+        seen.clear();
+        for c in ['c', 'h', 'a', 'f', 'o'] {
+            let _: bool = engine
+                .call("ProcessKeyEvent", &(keyval(c), 0u32, NO_MODIFIER))
+                .await
+                .unwrap();
+        }
+        let handled: bool = engine
+            .call("ProcessKeyEvent", &(KP_5, 0u32, NUM_LOCK))
+            .await
+            .unwrap();
+        assert!(handled, "the keypad digit must be consumed");
+        drain(&mut stream, &mut seen).await;
+        let preedit = seen
+            .iter()
+            .filter(|(name, _)| name == PREEDIT)
+            .map(|(_, text)| text.as_str())
+            .next_back();
+        assert_eq!(
+            preedit,
+            Some("chào5"),
+            "the keypad digit belongs at the end of the word, got {seen:?}"
+        );
+        let _: bool = engine
+            .call("ProcessKeyEvent", &(keyval(' '), 0u32, NO_MODIFIER))
+            .await
+            .unwrap();
+        drain(&mut stream, &mut seen).await;
+        assert!(
+            seen.iter().any(|(n, t)| n == COMMIT && t == "chafo5 "),
+            "a word with a digit in it is not Vietnamese and stays as typed, got {seen:?}"
+        );
+
+        // Reset is what a mouse click inside the same text field sends: it
+        // must commit the word, not throw it away.
+        seen.clear();
+        for c in ['v', 'i', 'e', 'e', 't', 'j'] {
+            let _: bool = engine
+                .call("ProcessKeyEvent", &(keyval(c), 0u32, NO_MODIFIER))
+                .await
+                .unwrap();
+        }
+        let _: () = engine.call("Reset", &()).await.unwrap();
+        drain(&mut stream, &mut seen).await;
+        assert!(
+            seen.iter().any(|(n, t)| n == COMMIT && t == "việt"),
+            "Reset must commit the pending word, got {seen:?}"
+        );
+
         // and the engine object can be destroyed again
         let service = Proxy::new_owned(conn.clone(), BUS_NAME, path, SERVICE_IFACE)
             .await

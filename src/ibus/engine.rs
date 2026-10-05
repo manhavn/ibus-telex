@@ -309,6 +309,22 @@ impl Engine {
         }
     }
 
+    /// Commit whatever has been typed and clear the pre-edit.
+    ///
+    /// This is what "the word must not be lost" means in practice: it runs on
+    /// focus loss, on disable and on reset (a mouse click in the same text
+    /// field, which is what used to throw a half typed word away).
+    async fn commit_pending(&self) {
+        let text = {
+            let mut st = self.state.lock();
+            st.typing.flush()
+        };
+        match text {
+            Some(text) => self.emit_commit(&text).await,
+            None => self.emit_preedit("").await,
+        }
+    }
+
     /// The key handling proper; `process_key_event` wraps it with logging.
     async fn handle_key(&self, keyval: u32, keycode: u32, state: u32) -> bool {
         if keys::is_release(state) || keys::is_shortcut(state) {
@@ -391,15 +407,7 @@ impl Engine {
         // Commit instead of dropping the word: on Wayland focus changes are
         // frequent (clicking the panel, popups) and losing a typed word is
         // the classic complaint about Vietnamese IMEs.
-        let text = {
-            let mut st = self.state.lock();
-            st.typing.flush()
-        };
-        if let Some(text) = text {
-            self.emit_commit(&text).await;
-        } else {
-            self.emit_preedit("").await;
-        }
+        self.commit_pending().await;
     }
 
     async fn focus_out_id(&self, object_path: String) {
@@ -408,13 +416,12 @@ impl Engine {
     }
 
     async fn reset(&self) {
-        // The client resets because *it* wants a clean slate (cursor moved,
-        // text field replaced, Escape): drop the word, do not insert it.
-        {
-            let mut st = self.state.lock();
-            st.typing.discard();
-        }
-        self.emit_preedit("").await;
+        // The client resets when the cursor moves - a mouse click in the same
+        // text field, or a key it handles itself.  It used to drop the word
+        // here, which is why clicking away in the middle of a word lost it;
+        // committing is the lesser evil, and it is consistent with focus
+        // loss: a typed word is never thrown away.
+        self.commit_pending().await;
     }
 
     async fn enable(&self) {
@@ -428,13 +435,7 @@ impl Engine {
             let mut st = self.state.lock();
             st.enabled = false;
         }
-        let text = {
-            let mut st = self.state.lock();
-            st.typing.flush()
-        };
-        if let Some(text) = text {
-            self.emit_commit(&text).await;
-        }
+        self.commit_pending().await;
     }
 
     async fn set_content_type(&self, purpose: u32, hints: u32) {

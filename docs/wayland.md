@@ -36,9 +36,11 @@ trade.
 
 ## 4. The word is never dropped
 
-`FocusOut` and `Disable` commit the pending word instead of discarding it
-(`Engine::focus_out`, `Engine::disable`); only `Reset` - which the client
-sends when *it* wants a clean slate - throws it away.  Unikey drops the word
+`FocusOut`, `Disable` and `Reset` commit the pending word instead of
+discarding it (`Engine::commit_pending`).  `Reset` is the one that matters
+most in practice: a mouse click inside the same text field makes the client
+send it, so dropping the word there means a half typed word disappears
+whenever the user clicks somewhere.  Unikey drops the word
 on both, which is why a half-typed word disappears when you click a
 notification, and keep in mind that under Wayland focus is lost at the
 slightest provocation.
@@ -66,7 +68,16 @@ land in the wrong place.
 Return, Tab, Escape, the arrows, Home/End, PageUp/PageDown, Insert and Delete
 (`keys::is_navigation`) commit the pending word and then let the application
 see the key.  Otherwise the application moves the cursor while the engine
-still overlays a pre-edit at the old position.
+still overlays a pre-edit at the old position.  The keypad block counts too
+(`KP_Home`, `KP_Left`, ...), because with Num Lock off that is what those keys
+are.
+
+The keypad needs one more thing: with Num Lock **on** it sends keysyms of its
+own (`KP_5` is 0xffb5, not `5`) and they have to be translated
+(`keys::char_from_keyval`).  An engine that ignores them never sees a keypad
+digit at all, so the application inserts the digit itself - and it lands *in
+front of* the pre-edit, because that is where the cursor still is: typing
+`chafo` and hitting the keypad `5` produced `5chafo` instead of `chafo5`.
 
 ## 8. Application shortcuts are left alone, and only those
 

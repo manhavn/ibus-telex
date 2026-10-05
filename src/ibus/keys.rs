@@ -46,6 +46,17 @@ pub const PURPOSE_PASSWORD: u32 = 8;
 pub const PURPOSE_PIN: u32 = 9;
 
 pub const KEY_BACKSPACE: u32 = 0xff08;
+pub const KEY_KP_HOME: u32 = 0xff95;
+pub const KEY_KP_LEFT: u32 = 0xff96;
+pub const KEY_KP_UP: u32 = 0xff97;
+pub const KEY_KP_RIGHT: u32 = 0xff98;
+pub const KEY_KP_DOWN: u32 = 0xff99;
+pub const KEY_KP_PAGE_UP: u32 = 0xff9a;
+pub const KEY_KP_PAGE_DOWN: u32 = 0xff9b;
+pub const KEY_KP_END: u32 = 0xff9c;
+pub const KEY_KP_BEGIN: u32 = 0xff9d;
+pub const KEY_KP_INSERT: u32 = 0xff9e;
+pub const KEY_KP_DELETE: u32 = 0xff9f;
 pub const KEY_TAB: u32 = 0xff09;
 pub const KEY_RETURN: u32 = 0xff0d;
 pub const KEY_KP_ENTER: u32 = 0xff8d;
@@ -94,7 +105,42 @@ pub fn is_navigation(keyval: u32) -> bool {
             | KEY_END
             | KEY_INSERT
             | KEY_DELETE
+            // the same keys on the keypad, which is what they are with Num
+            // Lock off
+            | KEY_KP_HOME
+            | KEY_KP_LEFT
+            | KEY_KP_UP
+            | KEY_KP_RIGHT
+            | KEY_KP_DOWN
+            | KEY_KP_PAGE_UP
+            | KEY_KP_PAGE_DOWN
+            | KEY_KP_END
+            | KEY_KP_BEGIN
+            | KEY_KP_INSERT
+            | KEY_KP_DELETE
     )
+}
+
+/// Keypad keysyms, which are *not* their ASCII equivalents: the keypad `5`
+/// arrives as `KP_5` (0xffb5).  An engine that ignores that never sees the
+/// keypad at all, the application inserts the character itself - and it
+/// lands in front of the pre-edit, because that is where the cursor still
+/// is.
+fn keypad_char(keyval: u32) -> Option<char> {
+    Some(match keyval {
+        0xffb0..=0xffb9 => {
+            // KP_0 .. KP_9
+            char::from_u32('0' as u32 + (keyval - 0xffb0)).unwrap_or('0')
+        }
+        0xffaa => '*', // KP_Multiply
+        0xffab => '+', // KP_Add
+        0xffac => ',', // KP_Separator
+        0xffad => '-', // KP_Subtract
+        0xffae => '.', // KP_Decimal
+        0xffaf => '/', // KP_Divide
+        0xffbd => '=', // KP_Equal
+        _ => return None,
+    })
 }
 
 /// Translate a key value into the character it produces, if it is one we
@@ -104,6 +150,6 @@ pub fn char_from_keyval(keyval: u32) -> Option<char> {
     if (0x20..=0x7e).contains(&keyval) {
         char::from_u32(keyval)
     } else {
-        None
+        keypad_char(keyval)
     }
 }
