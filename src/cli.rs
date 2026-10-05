@@ -20,6 +20,8 @@ USAGE:
                                    install into ~/.local and register in IBus
     ibus-telex uninstall           remove it again
     ibus-telex doctor              check the setup and report problems
+    ibus-telex sources --append    input sources with the engine added
+    ibus-telex sources --remove    input sources without the engine
     ibus-telex --help | --version
 
 ENVIRONMENT:
@@ -32,12 +34,15 @@ pub fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut cmd: Option<&str> = None;
     let mut add_source = false;
+    let mut remove_source = false;
     let mut print_xml = false;
     let mut run = false;
 
     for arg in &args {
         match arg.as_str() {
             "--xml" => print_xml = true,
+            "--append" => remove_source = false,
+            "--remove" => remove_source = true,
             "--ibus" | "--daemon" => run = true,
             "--help" | "-h" | "help" => {
                 print!("{HELP}");
@@ -68,7 +73,11 @@ pub fn main() -> ExitCode {
         Some("install") => install(add_source),
         Some("uninstall") => uninstall(),
         Some("doctor") => doctor(),
-        Some("sources") => print_sources_append(),
+        Some("sources") => print_sources(if remove_source {
+            SourceMode::Remove
+        } else {
+            SourceMode::Append
+        }),
         Some("xml") => {
             print_engines_xml();
             ExitCode::SUCCESS
@@ -337,14 +346,30 @@ fn install(add_source: bool) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// `ibus-telex sources --append` prints the new gsettings value with the
-/// engine appended to the current input sources.
-pub fn print_sources_append() -> ExitCode {
-    let current = gsettings_get_sources();
-    let mut sources = current.clone();
-    let entry = format!("('ibus','{}')", ENGINE_NAME);
-    if !sources.contains(&entry) {
-        sources.push(entry);
+/// What `sources` should do with the engine's input source.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SourceMode {
+    Append,
+    Remove,
+}
+
+/// Print the value `org.gnome.desktop.input-sources sources` should have,
+/// with the engine added or taken out of it.
+pub fn print_sources(mode: SourceMode) -> ExitCode {
+    let mut sources = gsettings_get_sources();
+    let entry = format!("('ibus', '{}')", ENGINE_NAME);
+    let same = |a: &str, b: &str| a.replace(' ', "") == b.replace(' ', "");
+    match mode {
+        SourceMode::Append => {
+            if !sources.iter().any(|s| same(s, &entry)) {
+                sources.push(entry);
+            }
+        }
+        SourceMode::Remove => sources.retain(|s| !same(s, &entry)),
+    }
+    if sources.is_empty() {
+        // never hand out an empty input source list
+        sources.push("('xkb', 'us')".to_owned());
     }
     println!("[{}]", sources.join(", "));
     ExitCode::SUCCESS

@@ -15,6 +15,11 @@ factory for `CreateEngine`, and for every battery line: creates a fresh
 engine object, sends the keys, and records the signals.  A trailing space is
 appended to each line so the word is committed.
 
+Signals are subscribed **per engine object path**.  The engine process also
+serves the object the session is using, so a subscriber without a path filter
+records whoever is typing on the machine right now - which is how a stray
+`fix` once ended up inside a measurement.
+
 Battery syntax (space separated):
 
 ```

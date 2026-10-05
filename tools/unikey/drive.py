@@ -50,8 +50,18 @@ def on_signal(conn_, sender, path, iface, sig, params):
         state['preedit'] = ''
 
 
-conn.signal_subscribe(dest, 'org.freedesktop.IBus.Engine', None, None, None,
-                      Gio.DBusSignalFlags.NONE, on_signal)
+# Signals are filtered by object path: the same process serves the engine
+# object of the session (whose keystrokes are the user's) as well as the ones
+# created here, and a subscriber without a path filter mixes them together.
+_sub = {'id': None}
+
+
+def watch(path):
+    if _sub['id'] is not None:
+        conn.signal_unsubscribe(_sub['id'])
+    _sub['id'] = conn.signal_subscribe(dest, 'org.freedesktop.IBus.Engine', None,
+                                       path, None, Gio.DBusSignalFlags.NONE,
+                                       on_signal)
 
 
 def pump():
@@ -86,6 +96,7 @@ def new_engine():
                IBus.Capabilite.SURROUNDING_TEXT)
     call(path, 'org.freedesktop.IBus.Engine', 'SetCapabilities', GLib.Variant('(u)', (caps,)))
     call(path, 'org.freedesktop.IBus.Engine', 'SetCursorLocation', GLib.Variant('(iiii)', (10, 20, 0, 0)))
+    watch(path)
     return path
 
 

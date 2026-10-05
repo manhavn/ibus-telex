@@ -18,13 +18,34 @@ Two things make it different from the C++ engines:
 Typing behaviour was reverse engineered from ibus-unikey 0.7.0 and is checked
 against it case by case, see [`docs/unikey-parity.md`](docs/unikey-parity.md).
 
-## Install
+## Quick start
+
+```sh
+./install.sh          # build, install, register the input source, restart IBus
+```
+
+That is the whole setup: no root, nothing to edit by hand.  Then switch with
+<kbd>Super</kbd>+<kbd>Space</kbd>.
+
+| script              | what it does                                                |
+|---------------------|-------------------------------------------------------------|
+| `install.sh`        | build + install + register + restart; `--no-source` leaves `org.gnome.desktop.input-sources` alone, `--skip-build` installs what is already built |
+| `build.sh`          | `cargo build --release` (`--debug` for a debug build)        |
+| `test.sh`           | `cargo fmt --check`, `cargo clippy`, `cargo test` (`--quick` skips the first two) |
+| `uninstall.sh`      | undo all of it (`--keep-source` keeps the input source)      |
+
+`install.sh` refuses to run as root (it installs into `~/.local`), saves the
+previous `org.gnome.desktop.input-sources sources` value under
+`~/.cache/ibus-telex/input-sources.bak` and puts that value back if the new
+one does not end up containing the engine.
+
+## Install by hand
 
 ```sh
 cargo build --release
 ./target/release/ibus-telex install          # ~/.local, no root needed
-ibus-telex sources --append                  # prints the gsettings value
-gsettings set org.gnome.desktop.input-sources sources "$(~/.local/bin/ibus-telex sources --append)"
+gsettings set org.gnome.desktop.input-sources sources \
+    "$(~/.local/bin/ibus-telex sources --append)"
 ```
 
 `install` copies the binary to `~/.local/bin/ibus-telex`, writes the component
