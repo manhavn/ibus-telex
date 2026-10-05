@@ -6,6 +6,7 @@
 //! events, watch the signals that come back.
 
 use std::process::{Child, Command};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use futures_lite::StreamExt;
@@ -18,6 +19,13 @@ use zbus::{Connection, MessageStream, Proxy};
 const PREEDIT: &str = "UpdatePreeditText";
 const COMMIT: &str = "CommitText";
 const REGISTER: &str = "RegisterProperties";
+
+/// Focus mode of every pre-edit update the engine published.
+static PREEDIT_MODES: Mutex<Vec<u32>> = Mutex::new(Vec::new());
+
+fn preedit_modes() -> Vec<u32> {
+    PREEDIT_MODES.lock().unwrap().clone()
+}
 
 const NO_MODIFIER: u32 = 0;
 const CONTROL_MASK: u32 = 1 << 2;
@@ -66,7 +74,10 @@ fn record(message: &Message, seen: &mut Vec<(String, String)>) {
             .body()
             .deserialize::<(OwnedValue, u32, bool, u32)>()
             .ok()
-            .and_then(|(t, _, _, _)| ibus_text(&t))
+            .map(|(t, _, _, mode)| {
+                PREEDIT_MODES.lock().unwrap().push(mode);
+                ibus_text(&t).unwrap_or_default()
+            })
             .unwrap_or_default(),
         COMMIT => message
             .body()
@@ -287,7 +298,9 @@ fn engine_serves_the_ibus_protocol() {
             "Num Lock must not stop committing, got {seen:?}"
         );
 
-        // losing focus commits instead of dropping the word
+        // Losing focus: every pre-edit carries the COMMIT focus mode, so the
+        // *client* commits the word it is holding - a commit sent from here
+        // would arrive at an unfocused context and insert it twice.
         seen.clear();
         for c in ['d', 'd'] {
             let _: bool = engine
@@ -295,12 +308,35 @@ fn engine_serves_the_ibus_protocol() {
                 .await
                 .unwrap();
         }
+        assert!(
+            preedit_modes().iter().all(|mode| *mode == 1),
+            "pre-edit updates must use the COMMIT focus mode, got {:?}",
+            preedit_modes()
+        );
         let _: () = engine.call("FocusOut", &()).await.unwrap();
         drain(&mut stream, &mut seen).await;
         assert!(
-            seen.iter().any(|(n, t)| n == COMMIT && t == "đ"),
-            "FocusOut must commit the pending word, got {seen:?}"
+            !seen.iter().any(|(name, _)| name == COMMIT),
+            "the client commits on focus loss, the engine must not, got {seen:?}"
         );
+        assert!(
+            seen.iter().any(|(n, t)| n == PREEDIT && t.is_empty()),
+            "the pre-edit must be hidden on focus loss, got {seen:?}"
+        );
+        // the word is gone from the engine's side as well
+        let handled: bool = engine
+            .call("ProcessKeyEvent", &(keyval('x'), 0u32, NO_MODIFIER))
+            .await
+            .unwrap();
+        assert!(handled, "a fresh word starts after focus loss");
+        drain(&mut stream, &mut seen).await;
+        let preedit = seen
+            .iter()
+            .filter(|(name, _)| name == PREEDIT)
+            .map(|(_, text)| text.as_str())
+            .next_back();
+        assert_eq!(preedit, Some("x"), "the old word must not come back");
+        let _: () = engine.call("Reset", &()).await.unwrap();
 
         // password fields are left alone
         let _: () = engine

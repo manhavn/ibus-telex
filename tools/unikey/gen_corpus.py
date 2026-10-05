@@ -5,7 +5,7 @@ Expected values come from driving the real ibus-unikey 0.7.0 engine over
 D-Bus (golden*.json).  Cases whose behaviour this engine deliberately
 changed are left out and documented in docs/unikey-parity.md:
 
-  * focus loss / disable: the word is committed instead of dropped,
+  * reset / disable: see the comment in this file,
   * Delete: the word is committed before the key reaches the application,
   * words starting with `z`: Unikey accepts `z` as an onset by accident,
   * `]` right after `ư`, where Unikey swallows the `ư`.
@@ -36,6 +36,9 @@ out = []
 for name in FILES:
     for case in json.load(open(os.path.join(DATA, name))):
         keys = case['keys']
+        # The @focusout/@reset/@disable cases are engine lifecycle, not
+        # typing: they need an engine object and a client, and they are
+        # covered by tests/protocol.rs instead.
         if '@' in keys:
             continue
         if keys in SKIP:

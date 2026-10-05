@@ -89,16 +89,19 @@ impl Engine {
 
     /// Show or hide the pre-edit.
     ///
-    /// The focus mode is `CLEAR`: the engine commits by itself (on focus
-    /// loss, on disable and on word boundaries) so a client that acts on the
-    /// mode can never commit the same word twice.
+    /// The focus mode is `COMMIT`, like Unikey publishes: when the input
+    /// context loses focus with a word half typed, the *client* commits the
+    /// pre-edit text it is holding.  That is the only copy that still counts
+    /// at that moment - a commit this engine sends after the context has
+    /// been unfocused never reaches it, which is why committing from here
+    /// left the word on the floor whenever the user clicked another window.
     async fn emit_preedit(&self, text: &str) {
         let cursor = text.chars().count() as u32;
         let body = (
             object::text(text),
             cursor,
             !text.is_empty(),
-            keys::PREEDIT_CLEAR,
+            keys::PREEDIT_COMMIT,
         );
         if let Err(e) = self
             .conn
@@ -309,11 +312,23 @@ impl Engine {
         }
     }
 
+    /// Forget the word and hide the pre-edit.
+    ///
+    /// Used when the client is the one that commits: it holds the pre-edit
+    /// and commits it itself, so the engine only has to drop its own copy.
+    async fn drop_preedit(&self) {
+        {
+            let mut st = self.state.lock();
+            st.typing.discard();
+        }
+        self.emit_preedit("").await;
+    }
+
     /// Commit whatever has been typed and clear the pre-edit.
     ///
-    /// This is what "the word must not be lost" means in practice: it runs on
-    /// focus loss, on disable and on reset (a mouse click in the same text
-    /// field, which is what used to throw a half typed word away).
+    /// Used for `Reset`, which the client sends when it clears the pre-edit
+    /// itself (a mouse click in the same text field) - there is no focus mode
+    /// involved, so the engine has to commit or the word is gone.
     async fn commit_pending(&self) {
         let text = {
             let mut st = self.state.lock();
@@ -404,10 +419,9 @@ impl Engine {
             let mut st = self.state.lock();
             st.focused = false;
         }
-        // Commit instead of dropping the word: on Wayland focus changes are
-        // frequent (clicking the panel, popups) and losing a typed word is
-        // the classic complaint about Vietnamese IMEs.
-        self.commit_pending().await;
+        // The client commits the pre-edit (the mode says COMMIT); here the
+        // engine only drops its own copy so the next word starts clean.
+        self.drop_preedit().await;
     }
 
     async fn focus_out_id(&self, object_path: String) {
@@ -435,7 +449,7 @@ impl Engine {
             let mut st = self.state.lock();
             st.enabled = false;
         }
-        self.commit_pending().await;
+        self.drop_preedit().await;
     }
 
     async fn set_content_type(&self, purpose: u32, hints: u32) {

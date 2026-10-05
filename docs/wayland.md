@@ -36,24 +36,30 @@ trade.
 
 ## 4. The word is never dropped
 
-`FocusOut`, `Disable` and `Reset` commit the pending word instead of
-discarding it (`Engine::commit_pending`).  `Reset` is the one that matters
-most in practice: a mouse click inside the same text field makes the client
-send it, so dropping the word there means a half typed word disappears
-whenever the user clicks somewhere.  Unikey drops the word
+The pre-edit is published with focus mode `COMMIT` (`Engine::emit_preedit`),
+which is what makes the *client* commit a half typed word when the input
+context loses focus.  That is the only copy that still counts at that moment:
+once the context is unfocused, a commit sent by the engine has nowhere to go,
+and Unikey publishes the same mode for the same reason.  So on focus loss and
+on disable the engine does **not** commit - it would insert the word twice -
+it drops its own copy and hides the pre-edit.
+
+`Reset` is the case the engine has to handle itself: the client sends it when
+it clears the pre-edit on its own, which is what a mouse click at another
+position in the same text field does.  No focus mode is involved there, and
+dropping the word is exactly why a half typed word used to disappear on a
+click.  Reset commits.  Unikey drops the word
 on both, which is why a half-typed word disappears when you click a
 notification, and keep in mind that under Wayland focus is lost at the
 slightest provocation.
 
-`tests/protocol.rs` asserts this: typing `dd`, then `FocusOut`, must commit
-`đ`.
+`tests/protocol.rs` pins all of it: every pre-edit update carries focus mode
+`COMMIT`, `FocusOut` must *not* produce a commit, and `Reset` must.
 
 ## 5. No double commits
 
-The pre-edit is always published with focus mode `CLEAR`
-(`keys::PREEDIT_CLEAR` in `Engine::emit_preedit`) *and* the engine commits by
-itself.  With mode `COMMIT` the framework may commit the pre-edit on focus
-change as well, which is how one word ends up inserted twice.
+Committing is either the client's job or the engine's, never both: focus loss
+and disable belong to the client (mode `COMMIT`), `Reset` to the engine.
 
 ## 6. No stale pre-edit
 

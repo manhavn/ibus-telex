@@ -248,8 +248,10 @@ fn an_empty_word_lets_the_space_through() {
     assert_eq!(typing.key_char(' '), Action::Pass);
 }
 
+/// The engine's own API; the *engine* leaves the focus loss commit to the
+/// client (see `emit_preedit`), it only drops its copy there.
 #[test]
-fn focus_loss_commits_a_pending_word() {
+fn flush_commits_a_pending_word() {
     let mut typing = Typing::new(Options::default());
     for c in "dd".chars() {
         typing.key_char(c);
