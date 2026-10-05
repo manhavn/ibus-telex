@@ -58,6 +58,7 @@ pub const KEY_KP_BEGIN: u32 = 0xff9d;
 pub const KEY_KP_INSERT: u32 = 0xff9e;
 pub const KEY_KP_DELETE: u32 = 0xff9f;
 pub const KEY_TAB: u32 = 0xff09;
+pub const KEY_ISO_LEFT_TAB: u32 = 0xfe20;
 pub const KEY_RETURN: u32 = 0xff0d;
 pub const KEY_KP_ENTER: u32 = 0xff8d;
 pub const KEY_ESCAPE: u32 = 0xff1b;
@@ -92,6 +93,7 @@ pub fn is_navigation(keyval: u32) -> bool {
     matches!(
         keyval,
         KEY_TAB
+            | KEY_ISO_LEFT_TAB
             | KEY_RETURN
             | KEY_KP_ENTER
             | KEY_ESCAPE

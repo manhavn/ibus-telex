@@ -277,6 +277,29 @@ fn engine_serves_the_ibus_protocol() {
             "pressing Control must finish the word, got {seen:?}"
         );
 
+        // Shift+Tab may arrive as ISO_Left_Tab rather than Tab with Shift.
+        seen.clear();
+        for c in ['v', 'i', 'e', 'e', 't', 'j'] {
+            let _: bool = engine
+                .call("ProcessKeyEvent", &(keyval(c), 0u32, NO_MODIFIER))
+                .await
+                .unwrap();
+        }
+        let handled: bool = engine
+            .call("ProcessKeyEvent", &(0xfe20u32, 0u32, 1u32))
+            .await
+            .unwrap();
+        assert!(!handled, "Shift+Tab must reach the application");
+        drain(&mut stream, &mut seen).await;
+        assert!(
+            seen.iter().any(|(n, t)| n == COMMIT && t == "việt"),
+            "Shift+Tab must finish the word, got {seen:?}"
+        );
+        assert!(
+            seen.iter().any(|(n, t)| n == PREEDIT && t.is_empty()),
+            "Shift+Tab must clear the pre-edit, got {seen:?}"
+        );
+
         // application shortcuts are never swallowed
         for c in ['c', 'a', 'v'] {
             let handled: bool = engine

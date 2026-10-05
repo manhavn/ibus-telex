@@ -74,10 +74,11 @@ land in the wrong place.
 
 ## 7. Keys that move the cursor commit first
 
-Return, Tab, Escape, the arrows, Home/End, PageUp/PageDown, Insert and Delete
-(`keys::is_navigation`) commit the pending word and then let the application
-see the key.  Otherwise the application moves the cursor while the engine
-still overlays a pre-edit at the old position.  The keypad block counts too
+Return, Tab (including Shift+Tab's `ISO_Left_Tab` keysym), Escape, the arrows,
+Home/End, PageUp/PageDown, Insert and Delete (`keys::is_navigation`) commit
+the pending word and then let the application see the key. Otherwise the
+application moves the cursor while the engine still overlays a pre-edit at the
+old position. The keypad block counts too
 (`KP_Home`, `KP_Left`, ...), because with Num Lock off that is what those keys
 are.
 
