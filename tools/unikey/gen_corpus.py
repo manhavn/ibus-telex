@@ -37,8 +37,10 @@ for name in FILES:
     for case in json.load(open(os.path.join(DATA, name))):
         keys = case['keys']
         # The @focusout/@reset/@disable cases are engine lifecycle, not
-        # typing: they need an engine object and a client, and they are
-        # covered by tests/protocol.rs instead.
+        # typing: they need an engine object and a client to mean anything,
+        # and they are covered by tests/protocol.rs instead.  (`@disable` is
+        # also where the two engines really do differ: see the table in
+        # docs/unikey-parity.md.)
         if '@' in keys:
             continue
         if keys in SKIP:

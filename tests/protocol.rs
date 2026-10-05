@@ -409,8 +409,9 @@ fn engine_serves_the_ibus_protocol() {
             "a word with a digit in it is not Vietnamese and stays as typed, got {seen:?}"
         );
 
-        // Reset is what a mouse click inside the same text field sends: it
-        // must commit the word, not throw it away.
+        // Reset clears the pre-edit, it does not commit it - the same thing
+        // ibus-table's reset() does, and what keeps a word from being
+        // delivered to whichever window happens to be focused next.
         seen.clear();
         for c in ['v', 'i', 'e', 'e', 't', 'j'] {
             let _: bool = engine
@@ -421,8 +422,12 @@ fn engine_serves_the_ibus_protocol() {
         let _: () = engine.call("Reset", &()).await.unwrap();
         drain(&mut stream, &mut seen).await;
         assert!(
-            seen.iter().any(|(n, t)| n == COMMIT && t == "việt"),
-            "Reset must commit the pending word, got {seen:?}"
+            !seen.iter().any(|(name, _)| name == COMMIT),
+            "Reset must not commit, got {seen:?}"
+        );
+        assert!(
+            seen.iter().any(|(n, t)| n == PREEDIT && t.is_empty()),
+            "Reset must clear the pre-edit, got {seen:?}"
         );
 
         // and the engine object can be destroyed again

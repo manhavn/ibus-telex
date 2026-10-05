@@ -119,6 +119,7 @@ impl Engine {
     }
 
     async fn emit_commit(&self, text: &str) {
+        debug_event(&format!("committing {text:?}"));
         if let Err(e) = self
             .conn
             .emit_signal(
@@ -324,19 +325,17 @@ impl Engine {
         self.emit_preedit("").await;
     }
 
-    /// Commit whatever has been typed and clear the pre-edit.
+    /// Commit the word if there is one, and do nothing otherwise.
     ///
-    /// Used for `Reset`, which the client sends when it clears the pre-edit
-    /// itself (a mouse click in the same text field) - there is no focus mode
-    /// involved, so the engine has to commit or the word is gone.
+    /// Used when the user reaches for something else - a shortcut, Alt, the
+    /// overview - so the half typed word is finished instead of left hanging.
     async fn commit_pending(&self) {
         let text = {
             let mut st = self.state.lock();
             st.typing.flush()
         };
-        match text {
-            Some(text) => self.emit_commit(&text).await,
-            None => self.emit_preedit("").await,
+        if let Some(text) = text {
+            self.emit_commit(&text).await;
         }
     }
 
@@ -349,13 +348,7 @@ impl Engine {
             // Never swallow application shortcuts (Ctrl+C, Alt+Tab, ...), but
             // do finish the word first: the user is reaching for something
             // else, and a half typed word must not be left hanging.
-            let text = {
-                let mut st = self.state.lock();
-                st.typing.flush()
-            };
-            if let Some(text) = text {
-                self.emit_commit(&text).await;
-            }
+            self.commit_pending().await;
             return false;
         }
         let _ = keycode;
@@ -418,15 +411,18 @@ impl Engine {
     }
 
     async fn focus_in(&self) {
+        debug_event("FocusIn");
         self.state.lock().focused = true;
     }
 
     async fn focus_in_id(&self, object_path: String, client: String) {
+        debug_event(&format!("FocusInId {object_path} {client}"));
         let _ = (object_path, client);
         self.focus_in().await;
     }
 
     async fn focus_out(&self) {
+        debug_event("FocusOut");
         {
             let mut st = self.state.lock();
             st.focused = false;
@@ -437,26 +433,37 @@ impl Engine {
     }
 
     async fn focus_out_id(&self, object_path: String) {
+        debug_event(&format!("FocusOutId {object_path}"));
         let _ = object_path;
         self.focus_out().await;
     }
 
     async fn reset(&self) {
-        // The client resets when the cursor moves - a mouse click in the same
-        // text field, or a key it handles itself.  It used to drop the word
-        // here, which is why clicking away in the middle of a word lost it;
-        // committing is the lesser evil, and it is consistent with focus
-        // loss: a typed word is never thrown away.
-        self.commit_pending().await;
+        debug_event("Reset");
+        // Clear, do not commit: this is what the client sends when it clears
+        // the pre-edit on its own (a mouse click at another position in the
+        // text field, or a key it handles itself), and what every other
+        // engine does with it - ibus-table's reset() is documented as "clear
+        // the preëdit".
+        //
+        // Committing here was a mistake: on a window switch the reset arrives
+        // while the pre-edit is still pending, and the commit it produced was
+        // delivered to the *newly focused* window, so the word showed up
+        // twice.  What protects a half typed word across a focus change is
+        // the COMMIT focus mode on the pre-edit (see `emit_preedit`), which
+        // makes the client commit the text it is holding.
+        self.drop_preedit().await;
     }
 
     async fn enable(&self) {
+        debug_event("Enable");
         self.state.lock().enabled = true;
         self.emit_properties().await;
         self.emit_preedit("").await;
     }
 
     async fn disable(&self) {
+        debug_event("Disable");
         {
             let mut st = self.state.lock();
             st.enabled = false;
@@ -465,6 +472,7 @@ impl Engine {
     }
 
     async fn set_content_type(&self, purpose: u32, hints: u32) {
+        debug_event(&format!("SetContentType purpose={purpose} hints={hints}"));
         let secret = matches!(purpose, keys::PURPOSE_PASSWORD | keys::PURPOSE_PIN);
         let was_secret = {
             let mut st = self.state.lock();
@@ -552,6 +560,7 @@ pub struct Service {
 #[zbus::interface(name = "org.freedesktop.IBus.Service")]
 impl Service {
     async fn destroy(&self) -> bool {
+        debug_event(&format!("Destroy {}", self.path.as_str()));
         let server = self.conn.object_server();
         let _ = server.remove::<Service, _>(&self.path).await;
         let _ = server.remove::<Engine, _>(&self.path).await;
@@ -616,6 +625,13 @@ impl Factory {
 }
 
 fn warn(msg: &str) {
+    if std::env::var_os("IBUS_TELEX_DEBUG").is_some() {
+        eprintln!("ibus-telex: {msg}");
+    }
+}
+
+/// Log the calls the daemon makes, under the same switch as the keys.
+fn debug_event(msg: &str) {
     if std::env::var_os("IBUS_TELEX_DEBUG").is_some() {
         eprintln!("ibus-telex: {msg}");
     }

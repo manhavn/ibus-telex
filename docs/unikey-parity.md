@@ -40,9 +40,10 @@ being able to type a single word starting with `k`.  The probes cover every
 onset against every vowel and `onset_allows` uses the result both for the
 tone mark and for the validity check.
 
-Running the same 286 captures against this engine leaves 24 differences, all
+Running the same 286 captures against this engine leaves 22 differences, all
 of them deliberate and all of them in the groups below.  No other case
-differs.
+differs.  (`@reset` used to be one of them; the engine clears the pre-edit
+there now, like Unikey.)
 
 ## The rules that were derived
 
@@ -87,7 +88,6 @@ Measured with the harness; "Unikey" is what ibus-unikey 0.7.0 does.
 | `a a z`, `o o z`, `a w z`, `o w z`, `u w z` | `âz`, `ôz`, `ăz`, `ơz`, `ưz` | `aaz`, `ooz`, `awz`, `owz`, `uwz` | same |
 | `a a [`, `a a ]`, `o o ]` | `â[`, `â]`, `ô]` | `aa[`, `aa]`, `oo]` | same |
 | type a word, then Alt or Super (either alone or as a shortcut) | word stays in the buffer | word committed | the user is reaching for a shortcut or the overview, not typing; Unikey only finishes the word for Control |
-| type a word, then `@reset` (a mouse click in the same text field) | word dropped | word committed | a typed word is never thrown away, see [wayland.md](wayland.md) §4 |
 | type a word, then `@focusout` | `` | `` | equal: both leave the commit to the client, the pre-edit is published with focus mode `COMMIT` |
 | type a word, then `@disable` | `tie '` | `''` | with no client in the capture Unikey keeps the word in its buffer and commits it at the next boundary, which is how a word survives an input source switch and turns up in the next field; here the client commits it (mode `COMMIT`) and the engine drops its copy |
 | `c h a f o` then the keypad `5` | commits `chào` and lets the application insert the `5` | keeps the digit in the word and commits `chafo5` | the keypad behaves like the number row (see §7 of wayland.md); a word with a digit in it is not Vietnamese, and such a word is committed as typed |

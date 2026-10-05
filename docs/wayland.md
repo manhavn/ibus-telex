@@ -44,11 +44,14 @@ and Unikey publishes the same mode for the same reason.  So on focus loss and
 on disable the engine does **not** commit - it would insert the word twice -
 it drops its own copy and hides the pre-edit.
 
-`Reset` is the case the engine has to handle itself: the client sends it when
-it clears the pre-edit on its own, which is what a mouse click at another
-position in the same text field does.  No focus mode is involved there, and
-dropping the word is exactly why a half typed word used to disappear on a
-click.  Reset commits.  Unikey drops the word
+`Reset` clears and does not commit, which is what every other engine does
+with it (ibus-table's `reset()` is documented as "clear the preëdit").  It is
+sent when the client clears the pre-edit on its own - a mouse click at
+another position in the same text field, a key it handles itself - and
+committing there is actively wrong: on a window switch the reset arrives
+while the word is still pending, the commit goes to whichever window is
+focused *now*, and the word shows up in the new window as well as in the old
+one.  Unikey drops the word
 on both, which is why a half-typed word disappears when you click a
 notification, and keep in mind that under Wayland focus is lost at the
 slightest provocation.
