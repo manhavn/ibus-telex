@@ -93,6 +93,63 @@ fn vni_method() {
     assert_eq!(type_text("a10", vni()), "a");
 }
 
+/// A misspelled word must stay exactly as typed - no diacritic, no tone mark,
+/// no half conversion.
+#[test]
+fn misspelled_words_stay_as_typed() {
+    let opts = Options::default();
+    // `k` is only written before i/y/e/ê in Vietnamese: `kof` is not `kò`,
+    // it is not a word at all, so it stays `kof`.
+    for (keys, want) in [
+        ("kof", "kof"),
+        ("kas", "kas"),
+        ("kuw ", "kuw "),
+        ("kom", "kom"),
+        ("kaf", "kaf"),
+        ("kas ", "kas "),
+    ] {
+        assert_eq!(type_text(keys, opts), want, "{keys} must not be converted");
+    }
+    // words that are Vietnamese do get their tone marks
+    for (keys, want) in [
+        ("kis", "kí"),
+        ("kys", "ký"),
+        ("kif", "kì"),
+        ("kysf", "kỳ"),
+        ("kes", "ké"),
+        ("kees", "kế"),
+        ("kins", "kín"),
+        ("cas", "cá"),
+        ("cof", "cò"),
+    ] {
+        assert_eq!(type_text(keys, opts), want, "{keys} must be Vietnamese");
+    }
+    // a stray character that is not part of Vietnamese takes the whole
+    // conversion back
+    for (keys, want) in [
+        ("aaz ", "aaz "),
+        ("ooz ", "ooz "),
+        ("awz ", "awz "),
+        ("tiez ", "tiez "),
+        ("tiengs ", "tiengs "),
+        ("hello ", "hello "),
+    ] {
+        assert_eq!(type_text(keys, opts), want, "{keys} must stay as typed");
+    }
+    // ... but spelling `đ` is not a diacritic and stays
+    assert_eq!(type_text("dd", opts), "đ");
+    assert_eq!(type_text("ddi", opts), "đi");
+
+    // The pre-edit is optimistic while typing, exactly like Unikey's; it is
+    // the commit that refuses to hand a misspelled word over converted.
+    let mut typing = Typing::new(opts);
+    for c in "kuw".chars() {
+        typing.key_char(c);
+    }
+    assert_eq!(typing.display(), "kư");
+    assert_eq!(typing.flush().as_deref(), Some("kuw"));
+}
+
 #[test]
 fn spell_check_can_be_switched_off() {
     // Invalid word: restored to the keystrokes with spell checking on ...

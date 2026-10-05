@@ -17,13 +17,19 @@ DATA = os.path.join(HERE, "data")
 
 FILES = ['battery_golden.json', 'battery2_golden.json', 'battery3_golden.json',
          'battery4_golden.json', 'battery5_golden.json', 'battery6_golden.json',
-         'battery7_golden.json']
+         'battery7_golden.json', 'battery8_golden.json']
 
 SKIP = {
     # z as an onset
     'z a s', 'z e s', 'z o s', 'Z a s', 'z e e s',
     # `]` after `ư`
     'u w ]', 'w ]',
+    # A stray `z`/`[`/`]` leaves the word misspelled, so this engine commits
+    # the keystrokes unchanged.  Unikey keeps the stray character together
+    # with the diacritics it had already applied - and is inconsistent about
+    # it: `aaz` commits `âz` while `aak` commits `aak`.
+    '[ ]', 'w z', 'a a z', 'o o z', 'a w z', 'o w z', 'u w z',
+    'a a [', 'a a ]', 'o o ]', '[ z',
 }
 
 out = []

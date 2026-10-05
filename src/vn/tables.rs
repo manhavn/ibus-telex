@@ -1,10 +1,11 @@
 //! Vietnamese syllable tables.
 //!
 //! Derived empirically from ibus-unikey 0.7.0 (Telex, spell check on) by
-//! driving the real engine over D-Bus: an onset/rhyme is valid when Unikey
-//! applies the diacritic instead of restoring the raw keystrokes.
+//! driving the real engine over D-Bus: an onset, an onset/vowel pair or a
+//! rhyme is valid when Unikey applies the diacritic instead of restoring the
+//! raw keystrokes.
 //!
-//! Regenerate with the harness in the repository (see docs/unikey-parity.md).
+//! Regenerate with the harness in tools/unikey (see docs/unikey-parity.md).
 
 #![allow(clippy::all)]
 
@@ -20,6 +21,7 @@ pub const ONSETS: &[&str] = &[
     "gh",
     "gi",
     "h",
+    "k",
     "kh",
     "l",
     "m",
@@ -95,6 +97,7 @@ pub const RHYMES: &[&str] = &[
     "ech",
     "em",
     "en",
+    "eng",
     "enh",
     "eo",
     "ep",
@@ -275,6 +278,7 @@ pub const RHYME_PREFIXES: &[&str] = &[
     "ech",
     "em",
     "en",
+    "eng",
     "enh",
     "eo",
     "ep",
@@ -434,6 +438,39 @@ pub const RHYME_PREFIXES: &[&str] = &[
     "ươu",
 ];
 
+#[rustfmt::skip]
+/// First vowel each onset may be followed by, e.g. `k` only before i/y/e/ê.
+pub const ONSET_VOWELS: &[(&str, &str)] = &[
+    ("b", "aăâeêioôơuưy"),
+    ("c", "aăâeêioôơuưy"),
+    ("ch", "aăâeêioôơuưy"),
+    ("d", "aăâeêioôơuưy"),
+    ("g", "aăâeêioôơuưy"),
+    ("gh", "aăâeêioôơuưy"),
+    ("gi", "aăâeêoôơuưy"),
+    ("h", "aăâeêioôơuưy"),
+    ("k", "eêiy"),
+    ("kh", "aăâeêioôơuưy"),
+    ("l", "aăâeêioôơuưy"),
+    ("m", "aăâeêioôơuưy"),
+    ("n", "aăâeêioôơuưy"),
+    ("ng", "aăâeêioôơuưy"),
+    ("ngh", "aăâeêioôơuưy"),
+    ("nh", "aăâeêioôơuưy"),
+    ("p", "aăâeêioôơuưy"),
+    ("ph", "aăâeêioôơuưy"),
+    ("q", "aăâeêioôơưy"),
+    ("qu", "aăâeêioôơy"),
+    ("r", "aăâeêioôơuưy"),
+    ("s", "aăâeêioôơuưy"),
+    ("t", "aăâeêioôơuưy"),
+    ("th", "aăâeêioôơuưy"),
+    ("tr", "aăâeêioôơuưy"),
+    ("v", "aăâeêioôơuưy"),
+    ("x", "aăâeêioôơuưy"),
+    ("đ", "aăâeêioôơuưy"),
+];
+
 /// Valid codas.
 pub const CODAS: &[&str] = &["c", "ch", "m", "n", "ng", "nh", "p", "t"];
 
@@ -463,4 +500,15 @@ pub fn is_coda_prefix(s: &str) -> bool {
 /// Is `s` a well-formed rhyme (nucleus + coda, without the tone mark)?
 pub fn is_rhyme(s: &str) -> bool {
     RHYMES.binary_search(&s).is_ok()
+}
+
+/// May `onset` be followed by a nucleus that starts with `vowel`?
+pub fn onset_allows(onset: &str, vowel: char) -> bool {
+    if onset.is_empty() {
+        return true;
+    }
+    match ONSET_VOWELS.binary_search_by(|(o, _)| o.cmp(&onset)) {
+        Ok(i) => ONSET_VOWELS[i].1.contains(vowel),
+        Err(_) => false,
+    }
 }

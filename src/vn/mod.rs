@@ -129,9 +129,6 @@ enum Phase {
     Onset,
     Nucleus,
     Coda,
-    /// One trailing character that the syllable parser has no use for but
-    /// which does not make the word wrong (`aaz`, `ơ]`).  A second one does.
-    Junk,
     Tail,
 }
 
@@ -379,12 +376,18 @@ impl Word {
 
     /// Text that must be committed at a word boundary.
     ///
-    /// A word that is not valid Vietnamese is restored to its raw keystrokes
-    /// when spell checking and auto restore are enabled - this is what makes
-    /// typing English words with the IME enabled behave sanely.
+    /// With spelling checking on, a word that is not a valid Vietnamese
+    /// syllable is committed as it was typed: no vowel diacritic and no tone
+    /// mark ever reaches the document for a misspelled word.
+    ///
+    /// `kof` stays `kof` (`cò` is the Vietnamese word - `k` is only written
+    /// before i/y/e/ê), `kom` stays `kom`, `tiengs` stays `tiengs`, English
+    /// words stay as typed.  What is *not* reverted is the spelling of the
+    /// letters themselves: `dd` is `đ`, because that is how đ is typed and it
+    /// carries no tone or vowel mark.
     pub fn commit_text(&self, opts: &Options) -> String {
         let r = self.render(opts);
-        if opts.spell_check && opts.auto_restore && r.marked && !r.valid {
+        if opts.spell_check && opts.auto_restore && !r.valid && r.marked {
             self.raw()
         } else {
             r.text
@@ -446,7 +449,13 @@ impl Word {
         let (onset, nucleus, coda, _) = split(p, false);
         let onset = onset.to_lowercase();
         let rhyme = format!("{}{}", nucleus.to_lowercase(), coda.to_lowercase());
-        tables::is_onset(&onset) && !rhyme.is_empty() && tables::is_rhyme(&rhyme)
+        let first_vowel = match nucleus.chars().next() {
+            Some(c) => c.to_lowercase().next().unwrap_or(c),
+            None => return false,
+        };
+        tables::is_onset(&onset)
+            && tables::onset_allows(&onset, first_vowel)
+            && tables::is_rhyme(&rhyme)
     }
 
     fn parse(&self, opts: &Options) -> Parsed {
@@ -530,15 +539,6 @@ impl Word {
                             last_mod = Some(LastMod { ch: 'z' });
                             continue;
                         }
-                        // A `z` with nothing to remove stays in the text but
-                        // is not part of the syllable, so it does not make an
-                        // otherwise valid word invalid - Unikey behaves the
-                        // same way (`aaz` commits `âz`, `aak` commits `aak`).
-                        if lower == 'z' && phase != Phase::Junk {
-                            push_tail(&mut p, ch);
-                            phase = Phase::Junk;
-                            continue;
-                        }
                     }
                     Method::Vni => {
                         // 6 circumflex, 7 horn, 8 breve, 9 đ, 0 delete tone
@@ -586,12 +586,6 @@ impl Word {
                             last_mod = Some(LastMod { ch: '0' });
                             continue;
                         }
-                        // see the `z` case above
-                        if lower == '0' && phase != Phase::Junk {
-                            push_tail(&mut p, ch);
-                            phase = Phase::Junk;
-                            continue;
-                        }
                     }
                 }
                 // tone keys
@@ -609,15 +603,6 @@ impl Word {
             // --- ordinary characters --------------------------------------
             match phase {
                 Phase::Tail => push_tail(&mut p, ch),
-                Phase::Junk => {
-                    // a second character the parser cannot place makes the
-                    // word invalid again, so `aaz` stays `âz` but `aazz`
-                    // and `aazk` are restored to the keystrokes
-                    p.broken = true;
-                    phase = Phase::Tail;
-                    push_tail(&mut p, ch);
-                    last_mod = None;
-                }
                 Phase::Onset => {
                     if is_vowel(lower) {
                         push_vowel(&mut p, lower, ch.is_uppercase(), None);
@@ -677,25 +662,23 @@ impl Word {
                             last_mod = None;
                         }
                     } else {
-                        // A `[` or `]` that found no vowel to horn is kept as
-                        // plain text without invalidating the word, just like
-                        // a `z` that had no tone to remove.
-                        let harmless = opts.method == Method::Telex
-                            && matches!(lower, '[' | ']')
-                            && phase != Phase::Junk;
-                        if !harmless {
-                            p.broken = true;
-                        }
-                        phase = if harmless { Phase::Junk } else { Phase::Tail };
+                        p.broken = true;
+                        phase = Phase::Tail;
                         push_tail(&mut p, ch);
                         last_mod = None;
                     }
                 }
             }
+            // `gi`/`qu` hand their glide to the onset as soon as a second
+            // vowel arrives, so that the tone and validity checks look at the
+            // same syllable Unikey sees.
+            if !p.broken {
+                try_move_glide(&mut p);
+            }
         }
 
         if !p.broken {
-            move_glide(&mut p);
+            try_move_glide(&mut p);
             p.tone_at = tone_position(&p, opts);
         }
         p.last_mod = last_mod;
@@ -731,6 +714,14 @@ fn push_tail(p: &mut Parsed, ch: char) {
     p.units.push(Unit::plain(ch, Phase::Tail));
 }
 
+/// First vowel of the nucleus, without its tone mark.
+fn first_nucleus_vowel(p: &Parsed) -> Option<char> {
+    p.units
+        .iter()
+        .find(|u| u.phase == Phase::Nucleus)
+        .map(|u| u.char_no_tone())
+}
+
 fn tone_allowed(p: &Parsed) -> bool {
     if p.broken {
         return false;
@@ -753,21 +744,30 @@ fn tone_allowed(p: &Parsed) -> bool {
     if !coda.is_empty() && !tables::is_valid_coda(&coda) {
         return false;
     }
-    p.units.iter().any(|u| u.phase == Phase::Nucleus)
+    // `k` may only be followed by i/y/e/ê - Unikey refuses the tone mark for
+    // `kas` while typing, and so does this engine.
+    match first_nucleus_vowel(p) {
+        Some(vowel) if tables::onset_allows(&onset, vowel) => {}
+        _ => return false,
+    }
+    true
 }
 
 /// `gi` and `qu` keep their glide in the onset (`giá`, `quá`).
-fn move_glide(p: &mut Parsed) {
+///
+/// The glide moves as soon as a second vowel arrives, which is what Unikey
+/// does while typing: `gis` is the onset `g` plus the rhyme `i` (the word
+/// `gì`), `gias` is the onset `gi` plus the rhyme `a`.
+fn try_move_glide(p: &mut Parsed) {
+    if p.units.iter().filter(|u| u.phase == Phase::Nucleus).count() < 2 {
+        return;
+    }
     let onset: String = p
         .units
         .iter()
         .filter(|u| u.phase == Phase::Onset)
         .map(|u| u.char_no_tone())
         .collect();
-    let vowels = p.units.iter().filter(|u| u.phase == Phase::Nucleus).count();
-    if vowels < 2 {
-        return;
-    }
     let first = match p.units.iter().find(|u| u.phase == Phase::Nucleus) {
         Some(u) => u.base,
         None => return,
@@ -834,7 +834,7 @@ fn split(p: &Parsed, toned: bool) -> (String, String, String, String) {
             Phase::Onset => onset.push(ch),
             Phase::Nucleus => nucleus.push(ch),
             Phase::Coda => coda.push(ch),
-            Phase::Junk | Phase::Tail => tail.push(ch),
+            Phase::Tail => tail.push(ch),
         }
     }
     (onset, nucleus, coda, tail)

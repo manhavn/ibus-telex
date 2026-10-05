@@ -3,6 +3,17 @@
 
 Usage: gen_tables.py <path to src/vn/tables.rs>
 Captures are read from ./data (see README.md).
+
+Three things come out of the probes:
+
+  * which onsets exist,
+  * which onsets may be followed by which vowel - `k` is only used before
+    i/y/e/ê in Vietnamese and Unikey enforces that while typing, so probing
+    an onset with a single vowel is not enough,
+  * which rhymes (nucleus + coda) exist.
+
+An onset, an onset/vowel pair or a rhyme counts as valid when Unikey applies
+the diacritic instead of restoring the raw keystrokes.
 """
 import json, os, sys
 
@@ -26,26 +37,39 @@ for base, forms in TONED.items():
 
 # `w`/`[`/`]` are Telex modifiers, not onsets; `z` is a Unikey quirk we do not model.
 EXCLUDE_ONSETS = {'w', 'z'}
+# The vowel characters, in the order the probes were made.
+VOWEL_ORDER = ['a', 'ă', 'â', 'e', 'ê', 'i', 'o', 'ô', 'ơ', 'u', 'ư', 'y']
 
-onsets, rhymes = [], []
+onset_probe, onset_vowels, rhymes = {}, {}, {}
 for g, m in zip(gold, man):
     raw = m['probe']
     assert g['keys'].replace(' ', '') == raw, (g['keys'], raw)
     transformed = g['word'] != raw
     if m['kind'] == 'onset':
-        if transformed and m['on'] not in EXCLUDE_ONSETS:
-            onsets.append({'dd': 'đ'}.get(m['on'], m['on']))
+        onset_probe[m['on']] = transformed
+    elif m['kind'] == 'onset_vowel':
+        onset_vowels.setdefault(m['on'], set())
+        if transformed:
+            onset_vowels[m['on']].add(m['vchar'])
     else:
         key = m['nuc'] + m['coda']
         if transformed:
-            # vowels must be known Vietnamese letters; codas are plain ASCII
             if not all(c in UNMAP if c in 'aăâeêioôơuưy' else c.isascii() for c in key):
                 print('!! unknown char in', key, file=sys.stderr)
                 continue
-            rhymes.append(key)
+            rhymes[key] = True
 
-onsets = sorted(set(onsets))
-rhymes = sorted(set(rhymes))
+# An onset exists when it can be followed by at least one vowel.
+onsets = sorted(
+    {'đ' if on == 'dd' else on for on, vs in onset_vowels.items()
+     if vs and on not in EXCLUDE_ONSETS}
+)
+matrix = {
+    ('đ' if on == 'dd' else on): ''.join(v for v in VOWEL_ORDER if v in vs)
+    for on, vs in onset_vowels.items()
+    if vs and on not in EXCLUDE_ONSETS
+}
+rhymes = sorted(rhymes)
 
 
 def prefixes(words):
@@ -69,10 +93,11 @@ def arr(name, items, doc):
 src = '''//! Vietnamese syllable tables.
 //!
 //! Derived empirically from ibus-unikey 0.7.0 (Telex, spell check on) by
-//! driving the real engine over D-Bus: an onset/rhyme is valid when Unikey
-//! applies the diacritic instead of restoring the raw keystrokes.
+//! driving the real engine over D-Bus: an onset, an onset/vowel pair or a
+//! rhyme is valid when Unikey applies the diacritic instead of restoring the
+//! raw keystrokes.
 //!
-//! Regenerate with the harness in the repository (see docs/unikey-parity.md).
+//! Regenerate with the harness in tools/unikey (see docs/unikey-parity.md).
 
 #![allow(clippy::all)]
 
@@ -84,6 +109,14 @@ src += "\n"
 src += arr('RHYMES', rhymes, 'Valid rhymes: nucleus + coda, tone-less, lower case.')
 src += "\n"
 src += arr('RHYME_PREFIXES', r_pre, 'Prefixes of valid rhymes.')
+src += "\n"
+src += "#[rustfmt::skip]\n"
+src += "/// First vowel each onset may be followed by, e.g. `k` only before i/y/e/ê.\n"
+src += "pub const ONSET_VOWELS: &[(&str, &str)] = &[\n"
+for on in sorted(matrix):
+    if on:
+        src += '    ("%s", "%s"),\n' % (on, matrix[on])
+src += "];\n"
 src += '''
 /// Valid codas.
 pub const CODAS: &[&str] = &["c", "ch", "m", "n", "ng", "nh", "p", "t"];
@@ -115,11 +148,23 @@ pub fn is_coda_prefix(s: &str) -> bool {
 pub fn is_rhyme(s: &str) -> bool {
     RHYMES.binary_search(&s).is_ok()
 }
+
+/// May `onset` be followed by a nucleus that starts with `vowel`?
+pub fn onset_allows(onset: &str, vowel: char) -> bool {
+    if onset.is_empty() {
+        return true;
+    }
+    match ONSET_VOWELS.binary_search_by(|(o, _)| o.cmp(&onset)) {
+        Ok(i) => ONSET_VOWELS[i].1.contains(vowel),
+        Err(_) => false,
+    }
+}
 '''
 
 open(sys.argv[1], 'w').write(src)
-print('onsets=%d rhymes=%d onset_prefixes=%d rhyme_prefixes=%d'
-      % (len(onsets), len(rhymes), len(o_pre), len(r_pre)))
+print('onsets=%d rhymes=%d' % (len(onsets), len(rhymes)))
 print('onsets:', onsets)
-missing = [('a', ), ]
-print('rhymes sample:', rhymes[:40])
+print('k allows:', matrix.get('k'))
+print('qu allows:', matrix.get('qu'))
+print('gi allows:', matrix.get('gi'))
+print('ngh allows:', matrix.get('ngh'))

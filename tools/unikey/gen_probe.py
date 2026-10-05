@@ -35,6 +35,19 @@ for on in ONONSETS:
     probe = on + "as"          # onset + 'a' + tone key
     lines.append(" ".join(probe))
     manifest.append({"kind": "onset", "on": on, "probe": probe})
+
+# Onsets are not free to combine with every vowel: `k` is only used before
+# i/y/e/ê in Vietnamese and Unikey enforces that while typing.  One probe per
+# onset and vowel finds those rules.
+VOWELS = [("a", "a"), ("aw", "ă"), ("aa", "â"), ("e", "e"), ("ee", "ê"),
+          ("i", "i"), ("o", "o"), ("oo", "ô"), ("ow", "ơ"), ("u", "u"),
+          ("uw", "ư"), ("y", "y")]
+for on in ONONSETS:
+    for keys, char in VOWELS:
+        probe = on + keys + "s"
+        lines.append(" ".join(probe))
+        manifest.append({"kind": "onset_vowel", "on": on, "vokey": keys,
+                         "vchar": char, "probe": probe})
 for keys, disp in NUCLEI:
     for coda in CODAS:
         probe = "b" + keys + coda + "s"

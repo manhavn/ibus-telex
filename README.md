@@ -103,7 +103,10 @@ from that log, which is how Unikey behaves: re-typing a modifier cancels the
 mark it produced (`ass` -> `as`, `aww` -> `aw`), `Backspace` deletes one
 *rendered* character (`tiếng` -> `tiến`, but `tiế` -> `ti`), and a word that
 is not valid Vietnamese is committed as the raw keystrokes (`tiengs`
-pre-edits as `tiéng` and commits as `tiengs`).
+pre-edits as `tiéng` and commits as `tiengs`).  Spelling checking is what
+makes the second half work: **a word that is not valid Vietnamese is
+committed exactly as typed**, so `kof` stays `kof` (`cò` is the Vietnamese
+word - `k` is only written before i/y/e/ê), never `kò`.
 
 One engine object is created per input context, exactly like libibus engines;
 the factory hands out `/org/freedesktop/IBus/Engine/<n>`.

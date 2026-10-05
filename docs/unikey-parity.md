@@ -17,20 +17,31 @@ would see":
 * every case ends with a space so the word is committed, and that trailing
   space is not counted.
 
-`tools/unikey/battery*.txt` hold 268 such key sequences: Vietnamese words,
+`tools/unikey/battery*.txt` hold 286 such key sequences: Vietnamese words,
 tone placement, every modifier key, `Backspace`, `Escape`, `Delete`,
-punctuation, uppercase, non-Vietnamese words, control keys.  The captures are
-in `tools/unikey/data`; `tests/parity_corpus.tsv` (252 cases, the ones this
-engine is expected to match) is generated from them.
+punctuation, uppercase, non-Vietnamese words, `k` before every vowel.  The
+captures are in `tools/unikey/data`; `tests/parity_corpus.tsv` (258 cases,
+the ones this engine is expected to match) is generated from them.
 
-The syllable tables (`src/vn/tables.rs`) are not hand written either: 839
-probes of the form `onset + rhyme + tone key` were fed to Unikey, and an
-onset or rhyme counts as valid when Unikey applies the diacritic instead of
-restoring the raw keystrokes.  That is where the 28 onsets and 175 rhymes
-come from, and it is why `ieng` is invalid while `iêng` is valid.
+The syllable tables (`src/vn/tables.rs`) are not hand written either: probes
+of the form `onset + vowel + tone key` and `b + rhyme + tone key` were fed to
+Unikey, and something counts as valid when Unikey applies the diacritic
+instead of restoring the raw keystrokes.  That is where the onsets, the 175
+rhymes and the onset/vowel combinations come from, and it is why `ieng` is
+invalid while `iêng` is valid.
 
-Running the same 268 captures against this engine gives 12 differences, all
-of them deliberate.  No other case differs.
+Onsets and rhymes are not independent.  `k` is only written before i/y/e/ê in
+Vietnamese (`ki`, `kê`, `ky` - never `ka`), and Unikey enforces that *while
+typing*: `kas`, `kof` and `kus` keep the tone key as a literal character
+instead of producing `ká`, `kò`, `kú`.  Probing an onset with a single vowel
+therefore reports nonsense - with `a` as the test vowel, `k` looks like it
+does not exist at all, which is exactly how this engine once shipped without
+being able to type a single word starting with `k`.  The probes cover every
+onset against every vowel and `onset_allows` uses the result both for the
+tone mark and for the validity check.
+
+Running the same captures against this engine gives 12 differences, all of
+them deliberate.  No other case differs.
 
 ## The rules that were derived
 
@@ -74,6 +85,16 @@ Measured with the harness; "Unikey" is what ibus-unikey 0.7.0 does.
 | `z e s`, `z o s`, `Z a s`, `z e e s` | `zé`, `zó`, `Zá`, `zế` | `zes`, `zos`, `Zas`, `zees` | same |
 | `u w ]` | `]` | `ư]` | Unikey's `]` handler swallows a preceding `ư`; here `]` after a vowel is plain text |
 | `w ]` | `]` | `ư]` | same |
+| `[ ]` | `ơ]` | `[]` | a stray `z`/`[`/`]` leaves the word misspelled, so this engine commits the keystrokes unchanged (see below) |
+| `w z`, `[ z` | `ưz`, `ơz` | `wz`, `[z` | same |
+| `a a z`, `o o z`, `a w z`, `o w z`, `u w z` | `âz`, `ôz`, `ăz`, `ơz`, `ưz` | `aaz`, `ooz`, `awz`, `owz`, `uwz` | same |
+| `a a [`, `a a ]`, `o o ]` | `â[`, `â]`, `ô]` | `aa[`, `aa]`, `oo]` | same |
+
+Those last four groups are one rule, and it is the rule this engine wants:
+**a misspelled word is committed exactly as it was typed.**  Unikey is not
+consistent about it - `aaz` commits `âz` while `aak` commits `aak` - and a
+half converted word is worse than either.  Spelling `đ` is not a diacritic,
+so `dd` still commits `đ`.
 
 One more difference that is *not* visible in the text: with an empty buffer
 Unikey handles the space key itself (`CommitText(" ")`, return `true`), this
