@@ -69,6 +69,38 @@ fn keypad_without_num_lock_is_navigation() {
 }
 
 #[test]
+fn modifier_presses_finish_the_word() {
+    // Control, Alt, Super, Meta, Hyper pressed on their own - what the user
+    // reaches for before a shortcut or the overview.  The key event carries no
+    // modifier bit of its own, so it has to be recognised by key value.
+    for kv in [
+        0xffe3, // Control_L
+        0xffe4, // Control_R
+        0xffe9, // Alt_L
+        0xffea, // Alt_R
+        0xffeb, // Super_L
+        0xffec, // Super_R
+        0xffe7, // Meta_L
+        0xffed, // Hyper_L
+    ] {
+        assert!(keys::is_modifier_key(kv), "{kv:#x} must finish the word");
+    }
+    for kv in [
+        0xffe1, // Shift_L - that is how upper case is typed
+        0xffe2, // Shift_R
+        0xffe5, // Caps_Lock
+        0xff7f, // Num_Lock
+        0xfe03, // ISO_Level3_Shift (AltGr)
+        0xff7e, // Mode_switch
+    ] {
+        assert!(
+            !keys::is_modifier_key(kv),
+            "{kv:#x} must not finish the word"
+        );
+    }
+}
+
+#[test]
 fn application_shortcuts_still_pass_through() {
     let shortcuts = [
         keys::CONTROL_MASK,

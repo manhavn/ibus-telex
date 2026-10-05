@@ -34,7 +34,8 @@ NAMED = {'KP0': 0xffb0, 'KP1': 0xffb1, 'KP2': 0xffb2, 'KP3': 0xffb3, 'KP4': 0xff
          'KP5': 0xffb5, 'KP6': 0xffb6, 'KP7': 0xffb7, 'KP8': 0xffb8, 'KP9': 0xffb9,
          'KPDOT': 0xffae, 'KPADD': 0xffab, 'KPSUB': 0xffad, 'KPMUL': 0xffaa,
          'KPDIV': 0xffaf, 'KPEQ': 0xffbd, 'KPENTER': 0xff8d, 'KPHOME': 0xff95,
-         'KPLEFT': 0xff96, 'KPRIGHT': 0xff98, 'KPUP': 0xff97, 'KPDOWN': 0xff99}
+         'KPLEFT': 0xff96, 'KPRIGHT': 0xff98, 'KPUP': 0xff97, 'KPDOWN': 0xff99,
+         'SHIFT_L': 0xffe1, 'CONTROL_L': 0xffe3, 'ALT_L': 0xffe9, 'SUPER_L': 0xffeb}
 
 SPECIAL = {'ESC': (0xff1b, 9), 'BACK': (0xff08, 22), 'RET': (0xff0d, 36),
            'DEL': (0xffff, 119), 'TAB': (0xff09, 23), 'HOME': (0xff50, 110),

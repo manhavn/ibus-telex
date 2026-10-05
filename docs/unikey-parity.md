@@ -86,6 +86,7 @@ Measured with the harness; "Unikey" is what ibus-unikey 0.7.0 does.
 | `w z`, `[ z` | `ưz`, `ơz` | `wz`, `[z` | same |
 | `a a z`, `o o z`, `a w z`, `o w z`, `u w z` | `âz`, `ôz`, `ăz`, `ơz`, `ưz` | `aaz`, `ooz`, `awz`, `owz`, `uwz` | same |
 | `a a [`, `a a ]`, `o o ]` | `â[`, `â]`, `ô]` | `aa[`, `aa]`, `oo]` | same |
+| type a word, then Alt or Super (either alone or as a shortcut) | word stays in the buffer | word committed | the user is reaching for a shortcut or the overview, not typing; Unikey only finishes the word for Control |
 | type a word, then `@reset` (a mouse click in the same text field) | word dropped | word committed | a typed word is never thrown away, see [wayland.md](wayland.md) §4 |
 | type a word, then `@focusout` | `` | `` | equal: both leave the commit to the client, the pre-edit is published with focus mode `COMMIT` |
 | type a word, then `@disable` | `tie '` | `''` | with no client in the capture Unikey keeps the word in its buffer and commits it at the next boundary, which is how a word survives an input source switch and turns up in the next field; here the client commits it (mode `COMMIT`) and the engine drops its copy |

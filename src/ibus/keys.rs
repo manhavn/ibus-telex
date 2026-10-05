@@ -121,6 +121,25 @@ pub fn is_navigation(keyval: u32) -> bool {
     )
 }
 
+/// Modifier keys that finish the word when they are pressed on their own.
+///
+/// Pressing Control, Alt or the Windows key in the middle of a word means the
+/// user is reaching for a shortcut or the overview, not typing - but the key
+/// itself arrives with no modifier bit set yet, so `is_shortcut` does not see
+/// it.  Shift is deliberately not in this set (it is how upper case is typed),
+/// and neither is AltGr (`ISO_Level3_Shift`), which is a typing key.
+pub fn is_modifier_key(keyval: u32) -> bool {
+    matches!(
+        keyval,
+        0xffe3 | 0xffe4 // Control_L, Control_R
+        | 0xffe7 | 0xffe8 // Meta_L, Meta_R
+        | 0xffe9 | 0xffea // Alt_L, Alt_R
+        | 0xffeb | 0xffec // Super_L, Super_R
+        | 0xffed | 0xffee // Hyper_L, Hyper_R
+        | 0xfe08 | 0xfe07 // ISO_Next_Group, ISO_Prev_Group
+    )
+}
+
 /// Keypad keysyms, which are *not* their ASCII equivalents: the keypad `5`
 /// arrives as `KP_5` (0xffb5).  An engine that ignores that never sees the
 /// keypad at all, the application inserts the character itself - and it

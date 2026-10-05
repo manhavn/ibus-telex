@@ -256,6 +256,27 @@ fn engine_serves_the_ibus_protocol() {
             "an invalid word is restored, got {seen:?}"
         );
 
+        // Pressing Control in the middle of a word finishes it: the user is
+        // reaching for a shortcut, not typing.
+        const CONTROL_L: u32 = 0xffe3;
+        seen.clear();
+        for c in ['c', 'h', 'a', 'f', 'o'] {
+            let _: bool = engine
+                .call("ProcessKeyEvent", &(keyval(c), 0u32, NO_MODIFIER))
+                .await
+                .unwrap();
+        }
+        let handled: bool = engine
+            .call("ProcessKeyEvent", &(CONTROL_L, 0u32, NO_MODIFIER))
+            .await
+            .unwrap();
+        assert!(!handled, "the modifier key goes to the application");
+        drain(&mut stream, &mut seen).await;
+        assert!(
+            seen.iter().any(|(n, t)| n == COMMIT && t == "chào"),
+            "pressing Control must finish the word, got {seen:?}"
+        );
+
         // application shortcuts are never swallowed
         for c in ['c', 'a', 'v'] {
             let handled: bool = engine

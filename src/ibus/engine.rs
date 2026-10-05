@@ -342,8 +342,20 @@ impl Engine {
 
     /// The key handling proper; `process_key_event` wraps it with logging.
     async fn handle_key(&self, keyval: u32, keycode: u32, state: u32) -> bool {
-        if keys::is_release(state) || keys::is_shortcut(state) {
-            // Never swallow application shortcuts (Ctrl+C, Alt+Tab, ...).
+        if keys::is_release(state) {
+            return false;
+        }
+        if keys::is_shortcut(state) || keys::is_modifier_key(keyval) {
+            // Never swallow application shortcuts (Ctrl+C, Alt+Tab, ...), but
+            // do finish the word first: the user is reaching for something
+            // else, and a half typed word must not be left hanging.
+            let text = {
+                let mut st = self.state.lock();
+                st.typing.flush()
+            };
+            if let Some(text) = text {
+                self.emit_commit(&text).await;
+            }
             return false;
         }
         let _ = keycode;

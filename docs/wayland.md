@@ -102,6 +102,13 @@ typing Vietnamese did nothing at all.  The reference engine, ibus-table,
 looks at Control and Alt and nothing else.  `tests/keys.rs` pins the policy
 and `tests/protocol.rs` types a whole word with `MOD2` set.
 
+Pressing a shortcut modifier **on its own** also finishes the word
+(`keys::is_modifier_key`): Control, Alt, the Windows key, Meta, Hyper.  The
+user is reaching for a shortcut or the overview, not typing, and the word
+must not be left hanging.  The key itself arrives with no modifier bit of its
+own, so it is recognised by key value.  Shift is not in that set - it is how
+upper case is typed - and neither is AltGr.
+
 If it ever happens again, `IBUS_TELEX_DEBUG=1` makes the engine log every
 key it is offered together with the state word and the decision:
 
